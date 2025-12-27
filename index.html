@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Los Calvera Locos 18ST</title>
+    <link id="favicon" rel="icon" type="image/png" href="">
+    <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root { 
+            --primary: #ffffff; 
+            --accent: #d30000; 
+            --bg-dark: #050505; 
+            --card-bg: rgba(12, 12, 12, 0.92);
+            --sidebar-w: 260px; 
+            --border-c: rgba(255, 255, 255, 0.1);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; outline: none; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+
+        body, html { height: 100%; background: var(--bg-dark); color: var(--primary); font-family: 'Rajdhani', sans-serif; overflow: hidden; }
+        
+        /* GİRİŞ EKRANI */
+        #enter-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; transition: opacity 0.8s ease, visibility 0.8s;
+        }
+        .click-text { font-family: 'UnifrakturMaguntia'; font-size: 4rem; color: #fff; text-shadow: 0 0 20px var(--accent); animation: pulse 2s infinite; cursor: pointer; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 1; } }
+
+        /* ARKA PLAN */
+        #dynamic-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; z-index: -2; opacity: 0.4; transition: 1s ease; filter: grayscale(60%); }
+        .overlay-gradient { position: fixed; top:0; left:0; width:100%; height:100%; background: radial-gradient(circle, transparent 20%, #000 95%); z-index: -1; }
+
+        /* ANA YAPI */
+        .app-wrapper { display: flex; width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+        /* SIDEBAR */
+        .sidebar { 
+            width: var(--sidebar-w); height: 100%; 
+            background: rgba(0,0,0,0.95); border-right: 1px solid var(--border-c);
+            display: flex; flex-direction: column; padding: 30px 20px; z-index: 10;
+        }
+        .brand { display: flex; align-items: center; gap: 15px; margin-bottom: 50px; }
+        .brand img { width: 55px; height: 55px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; }
+        
+        .nav-item {
+            background: transparent; color: #888; border: none; width: 100%;
+            padding: 12px 15px; text-align: left; font-size: 1rem; font-weight: 600; font-family: 'Rajdhani';
+            cursor: pointer; display: flex; align-items: center; gap: 15px;
+            transition: 0.2s; border-radius: 6px; margin-bottom: 5px;
+        }
+        .nav-item:hover, .nav-item.active { background: var(--accent); color: #fff; }
+        .nav-item i { width: 20px; text-align: center; }
+
+        /* İÇERİK ALANI & SAYFALAR */
+        .content { flex: 1; padding: 30px; overflow-y: auto; position: relative; padding-bottom: 120px; }
+        
+        .page-section { display: none; animation: fadeIn 0.4s ease; height: 100%; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+        /* GRID SİSTEMLERİ */
+        .dashboard-grid { display: grid; grid-template-columns: 280px 1fr 280px; gap: 20px; min-height: 500px; }
+        .activities-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+        
+        /* FOOTER */
+        .site-footer {
+            position: fixed; bottom: 0; left: var(--sidebar-w); right: 0;
+            padding: 15px; background: rgba(0,0,0,0.8); border-top: 1px solid var(--border-c);
+            text-align: center; font-size: 0.8rem; color: #555; z-index: 5;
+        }
+        .footer-highlight { color: var(--accent); font-weight: bold; }
+
+        /* KART STİLLERİ */
+        .card {
+            background: var(--card-bg); border: 1px solid var(--border-c);
+            border-radius: 15px; padding: 20px; display: flex; flex-direction: column;
+            position: relative; overflow: hidden; backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        .card-header { font-family: 'UnifrakturMaguntia'; font-size: 1.4rem; margin-bottom: 15px; color: #eee; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
+        .card-img { width: 100%; height: 180px; object-fit: cover; border-radius: 10px; opacity: 0.9; transition: 0.3s; }
+        
+        /* Faaliyet Kartı */
+        .act-card-item {
+            background: var(--card-bg); border: 1px solid var(--border-c); border-radius: 12px; overflow: hidden;
+            transition: 0.3s; cursor: pointer; position: relative; min-height: 150px;
+        }
+        .act-card-item:hover { transform: translateY(-5px); border-color: var(--accent); }
+        .act-card-item img { width: 100%; height: 150px; object-fit: cover; transition: 0.5s; }
+        .act-info { padding: 15px; background: linear-gradient(to top, #000, transparent); position: absolute; bottom:0; width:100%; }
+
+        /* TİCARET KARTI STİLİ */
+        .trade-card-item {
+            background: var(--card-bg); border: 1px solid var(--border-c); border-radius: 12px; overflow: hidden;
+            transition: 0.3s; position: relative; display: flex; flex-direction: column;
+        }
+        .trade-card-item:hover { border-color: #44ff44; transform: translateY(-3px); }
+        .trade-img { width: 100%; height: 160px; object-fit: cover; border-bottom: 1px solid #222; }
+        .trade-body { padding: 15px; display: flex; flex-direction: column; flex: 1; }
+        .trade-price { margin-top: auto; color: #44ff44; font-weight: bold; font-size: 1.1rem; text-align: right; letter-spacing: 1px; }
+
+        /* ORTA KART (MAIN) */
+        .main-card { grid-column: 2; display: flex; flex-direction: column; }
+        .main-visual { width: 100%; flex: 1; position: relative; border-radius: 12px; overflow: hidden; border: 1px solid #333; min-height: 300px; }
+        .main-visual img { width: 100%; height: 100%; object-fit: cover; }
+        .main-visual-overlay { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(transparent, #000); padding: 30px; }
+        .member-list { margin-top: 15px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .member-badge { 
+            background: linear-gradient(45deg, #111, #080808); 
+            border: 1px solid #333; 
+            padding: 6px 14px; 
+            border-radius: 4px; 
+            font-size: 0.85rem; 
+            color: #ccc; 
+            text-transform: uppercase; 
+            font-weight: 600;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .member-rank { color: var(--accent); font-weight: bold; font-size: 0.75rem; border: 1px solid var(--accent); padding: 0 4px; border-radius: 3px; }
+
+        /* TABLO & ONUR KÖŞESİ */
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        td { padding: 12px 8px; border-bottom: 1px solid #222; color: #ccc; vertical-align: middle; }
+        
+        .status-badge { 
+            padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; 
+            display: inline-block; letter-spacing: 1px; text-transform: uppercase;
+        }
+        /* CK ise Kırmızı, Değilse Gri/Accent */
+        .status-ck { background: rgba(211, 0, 0, 0.2); color: #ff4444; border: 1px solid #900; }
+        .status-other { background: rgba(50, 50, 50, 0.5); color: #ddd; border: 1px solid #444; }
+
+        /* PLAYER BAR & VOLUME */
+        .player-bar { position: absolute; bottom: 60px; right: 20px; display: flex; align-items: center; gap: 20px; z-index: 50; }
+        .player-info { background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 50px; border: 1px solid #333; display: flex; align-items: center; gap: 15px; backdrop-filter: blur(5px); }
+        .player-info img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; animation: spin 4s linear infinite; }
+        .volume-control { position: relative; display: flex; align-items: center; background: rgba(0,0,0,0.8); height: 50px; padding: 0 15px; border-radius: 30px; border: 1px solid #333; transition: 0.3s; }
+        .volume-slider-container { width: 0; overflow: hidden; transition: width 0.4s ease; display: flex; align-items: center; }
+        .volume-control:hover .volume-slider-container { width: 80px; margin-left: 10px; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* LIGHTBOX */
+        #lightbox { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.95); z-index: 5000; display: none; align-items: center; justify-content: center; }
+        .lightbox-content { max-width: 800px; width: 90%; background: #111; border-radius: 15px; overflow: hidden; border: 1px solid #333; }
+        .lb-img { width: 100%; height: 400px; object-fit: cover; }
+
+        /* ADMIN PANEL */
+        #admin-panel { position: fixed; top: 0; right: 0; width: 420px; height: 100%; background: #080808; border-left: 1px solid var(--accent); transform: translateX(100%); transition: 0.4s; z-index: 200; padding: 30px; overflow-y: auto; }
+        #admin-panel.open { transform: translateX(0); }
+        .input-group { margin-bottom: 12px; }
+        .input-group label { display: block; font-size: 0.7rem; color: var(--accent); margin-bottom: 4px; font-weight: bold; text-transform: uppercase; }
+        input, textarea, select { width: 100%; background: #121212; border: 1px solid #333; padding: 10px; color: #fff; border-radius: 6px; font-family: 'Rajdhani'; }
+        .save-btn { width: 100%; padding: 12px; background: var(--accent); border: none; color: #fff; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 5px; transition: 0.2s;}
+        .save-btn:hover { background: #b00000; }
+        
+        .admin-list-box { background: #151515; padding: 10px; border-radius: 6px; margin-top: 10px; max-height: 150px; overflow-y: auto; border: 1px solid #222; }
+        .act-list-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid #222; font-size: 0.8rem; }
+        .del-btn { background: #d30000; color: #fff; border:none; padding: 4px 8px; cursor: pointer; border-radius: 4px; }
+
+        #admin-trigger { position: fixed; bottom: 65px; left: 20px; width: 40px; height: 40px; background: #000; border: 1px solid #333; color: #555; border-radius: 8px; cursor: pointer; z-index: 100; }
+        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); z-index: 3000; display:none; align-items:center; justify-content:center; }
+    </style>
+</head>
+<body>
+
+    <div id="enter-screen" onclick="startApp()">
+        <div class="click-text">18TH STREET</div>
+        <div style="margin-top:10px; color:#555; letter-spacing:5px; font-size:0.8rem;">GİRİŞ YAPMAK İÇİN TIKLAYINIZ</div>
+    </div>
+
+    <div id="lightbox" onclick="closeLightbox()">
+        <div class="lightbox-content" onclick="event.stopPropagation()">
+            <img src="" class="lb-img" id="lb-img">
+            <div style="padding:30px;">
+                <h2 id="lb-title" style="font-family:'UnifrakturMaguntia'; font-size:2rem; color:var(--accent); margin-bottom:10px;"></h2>
+                <p id="lb-desc" style="color:#ccc; line-height:1.6;"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="dynamic-bg"></div>
+    <div class="overlay-gradient"></div>
+
+    <button id="admin-trigger" onclick="toggleAdminPanel()"><i class="fas fa-cog"></i></button>
+
+    <div class="app-wrapper">
+        <aside class="sidebar">
+            <div class="brand">
+                <img src="" id="ui-sidebar-logo">
+                <div>
+                    <h1 style="color:#fff; font-family:'UnifrakturMaguntia'; font-size:1.6rem;">Los Calvera</h1>
+                    <span style="color:var(--accent); letter-spacing:3px; font-size:0.8rem;">LOCOS 18</span>
+                </div>
+            </div>
+            <nav>
+                <button class="nav-item active" onclick="switchPage('home', this)"><i class="fas fa-th-large"></i> Ana Panel</button>
+                <button class="nav-item" onclick="switchPage('announcements', this)"><i class="fas fa-bullhorn"></i> Duyurular</button>
+                <button class="nav-item" onclick="switchPage('activities', this)"><i class="fas fa-camera-retro"></i> Faaliyetler</button>
+                <button class="nav-item" onclick="switchPage('trade', this)"><i class="fas fa-coins"></i> Ticaret</button>
+                <button class="nav-item" onclick="switchPage('story', this)"><i class="fas fa-book"></i> Hikayemiz</button>
+                <button class="nav-item" onclick="switchPage('discord', this)"><i class="fab fa-discord"></i> Discord</button>
+            </nav>
+        </aside>
+
+        <main class="content">
+            <div id="page-home" class="page-section active">
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">Son Faaliyet</div>
+                        <img src="" id="ui-last-act-img" class="card-img">
+                        <h3 id="ui-last-act-title" style="margin-top:15px; font-size:1.1rem; color:#fff;">...</h3>
+                        <p id="ui-last-act-desc" style="font-size:0.85rem; color:#888; margin-top:5px; flex:1;">...</p>
+                    </div>
+                    <div class="card main-card">
+                        <div class="main-visual">
+                            <img src="" id="ui-main-img">
+                            <div class="main-visual-overlay">
+                                <h2 id="ui-main-name" style="font-family:'UnifrakturMaguntia'; font-size:2.5rem;">...</h2>
+                                <p id="ui-main-bio" style="color:#ccc; font-size:0.9rem;"></p>
+                            </div>
+                        </div>
+                        <div class="member-list" id="ui-members"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">Onur Köşesi</div>
+                        <table><tbody id="ui-ck-list"></tbody></table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-activities" class="page-section">
+                <h2 style="font-family:'UnifrakturMaguntia'; margin-bottom:20px; font-size:2rem;">Faaliyet Geçmişi</h2>
+                <div class="activities-grid" id="ui-all-activities"></div>
+            </div>
+
+            <div id="page-announcements" class="page-section">
+                <h2 style="font-family:'UnifrakturMaguntia'; margin-bottom:20px; font-size:2rem;">Duyurular</h2>
+                <div class="activities-grid" id="ui-all-announcements"></div>
+            </div>
+
+            <div id="page-discord" class="page-section">
+                <h2 style="font-family:'UnifrakturMaguntia'; margin-bottom:20px; font-size:2rem;">Discord</h2>
+                <div class="activities-grid" id="ui-all-discord"></div>
+            </div>
+
+            <div id="page-trade" class="page-section">
+                <h2 style="font-family:'UnifrakturMaguntia'; margin-bottom:20px; font-size:2rem;">Satış Listesi</h2>
+                <div id="ui-trade-list" class="activities-grid"></div>
+            </div>
+            <div id="page-story" class="page-section">
+                <div id="ui-story-text" style="background:var(--card-bg); padding:40px; border-radius:15px; line-height:1.8; color:#ccc; border:1px solid var(--border-c);"></div>
+            </div>
+        </main>
+
+        <footer class="site-footer">
+            © 2025 <span class="footer-highlight">Los Calvera Locos 18ST</span> - Tüm Hakları Saklıdır | Designed By <span style="color:#eee;">Guery</span>
+        </footer>
+
+        <div class="player-bar">
+            <div class="player-info">
+                <img src="" id="ui-player-art">
+                <div>
+                    <h4 id="ui-player-name" style="font-size:0.8rem;">...</h4>
+                    <p id="ui-player-artist" style="font-size:0.7rem; color:#aaa;">...</p>
+                </div>
+                <button onclick="toggleAudio()" style="background:none; border:none; color:#fff; cursor:pointer;"><i class="fas fa-play" id="play-icon"></i></button>
+            </div>
+            <div class="volume-control">
+                <i class="fas fa-volume-up" style="color:#555;"></i>
+                <div class="volume-slider-container"><input type="range" min="0" max="1" step="0.05" onchange="player.volume = this.value"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-panel">
+        <h2 style="color:var(--accent); font-family:'UnifrakturMaguntia'; margin-bottom:20px;">Yönetim Paneli</h2>
+        
+        <div style="background:#111; padding:15px; border-radius:8px; border:1px solid #333; margin-bottom:20px;">
+            <label style="color:var(--accent); font-size:0.7rem; font-weight:bold; margin-bottom:5px; display:block;">İÇERİK / TİCARET EKLE</label>
+            <select id="add-type" style="margin-bottom:10px;" onchange="checkTradeType(this)">
+                <option value="activities">Faaliyet Ekle</option>
+                <option value="announcements">Duyuru Ekle</option>
+                <option value="discord">Discord İçeriği Ekle</option>
+                <option value="trade">Ticaret Ürünü Ekle</option>
+            </select>
+            <input type="text" id="new-title" placeholder="Başlık" style="margin-bottom:8px;">
+            <input type="text" id="new-img" placeholder="Resim URL" style="margin-bottom:8px;">
+            <input type="text" id="new-price" placeholder="Fiyat (Sadece Ticaret için)" style="margin-bottom:8px; display:none; border-color:#44ff44;">
+            <textarea id="new-desc" rows="2" placeholder="Açıklama (Opsiyonel)" style="margin-bottom:8px;"></textarea>
+            <button class="save-btn" onclick="handleNewEntry()">YAYINLA</button>
+        </div>
+
+        <div style="background:#111; padding:15px; border-radius:8px; border:1px solid #333; margin-bottom:20px;">
+            <label style="color:var(--accent); font-size:0.7rem; font-weight:bold; margin-bottom:5px; display:block;">ÜYE YÖNETİMİ (ANA KART)</label>
+            <div style="display:flex; gap:5px; margin-bottom:5px;">
+                <input type="text" id="mem-name" placeholder="İsim Soyisim" style="flex:2;">
+                <input type="text" id="mem-rank" placeholder="Rütbe (R20)" style="flex:1;">
+            </div>
+            <button class="save-btn" style="background:#222; border:1px solid #444;" onclick="handleAddMember()">ÜYEYİ EKLE</button>
+            <div class="admin-list-box" id="adm-list-members" style="height:100px;"></div>
+        </div>
+
+        <div style="background:#111; padding:15px; border-radius:8px; border:1px solid #333; margin-bottom:20px;">
+            <label style="color:var(--accent); font-size:0.7rem; font-weight:bold; margin-bottom:5px; display:block;">ONUR KÖŞESİ YÖNETİMİ</label>
+            <div style="display:flex; gap:5px; margin-bottom:5px;">
+                <input type="text" id="honor-name" placeholder="İsim (Santiago)" style="flex:2;">
+                <input type="text" id="honor-status" placeholder="Durum (CK / Müebbet)" style="flex:1;">
+            </div>
+            <button class="save-btn" style="background:#222; border:1px solid #444;" onclick="handleAddHonor()">LİSTEYE EKLE</button>
+            <div class="admin-list-box" id="adm-list-honor" style="height:100px;"></div>
+        </div>
+
+        <div class="input-group"><label>Logo & Arka Plan</label>
+            <input type="text" id="in-logo" placeholder="Logo">
+            <input type="text" id="in-bg" placeholder="Arka Plan (Gif/Resim)" style="margin-top:5px;">
+        </div>
+        <div class="input-group"><label>Ana Kart Görseli & Bio</label>
+            <input type="text" id="in-main-img" placeholder="Büyük Resim">
+            <input type="text" id="in-name" placeholder="Başlık" style="margin-top:5px;">
+            <textarea id="in-bio" placeholder="Bio"></textarea>
+        </div>
+        <div class="input-group"><label>Müzik Ayarları</label>
+            <input type="text" id="in-mu" placeholder="MP3 URL">
+            <input type="text" id="in-mu-art" placeholder="Kapak Resmi" style="margin-top:5px;">
+        </div>
+        <div class="input-group"><label>Hikaye Metni</label><textarea id="in-story" rows="3"></textarea></div>
+
+        <button class="save-btn" style="background:#222;" onclick="uploadSettings()">GENEL GÜNCELLEME</button>
+
+        <h4 style="color:#555; font-size:0.7rem; margin-top:20px;">AKTİF İÇERİKLERİ YÖNET</h4>
+        <div class="admin-list-box" id="adm-list-trade"></div>
+        <div class="admin-list-box" id="adm-list-act"></div>
+        <div class="admin-list-box" id="adm-list-ann"></div>
+        <div class="admin-list-box" id="adm-list-disc"></div>
+    </div>
+
+    <div id="login-modal" class="modal">
+        <div style="background:#0a0a0a; padding:30px; border-radius:15px; border:1px solid var(--accent); width:320px;">
+            <h3 style="color:#fff; text-align:center; margin-bottom:20px;">ADMİN GİRİŞİ</h3>
+            <input type="text" id="adm-user" placeholder="KULLANICI ADI" style="margin-bottom:10px; text-align:center;">
+            <input type="password" id="adm-pass" placeholder="ŞİFRE" style="margin-bottom:15px; text-align:center;">
+            <button class="save-btn" onclick="tryLogin()">SİSTEME GİRİŞ</button>
+        </div>
+    </div>
+
+    <audio id="m-audio" loop></audio>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAKnZzL6wIv5R8KNfHqpgGQFA8UjvT420Q",
+            authDomain: "loscalveralocos.firebaseapp.com",
+            projectId: "loscalveralocos",
+            storageBucket: "loscalveralocos.firebasestorage.app",
+            messagingSenderId: "793134639054",
+            appId: "1:793134639054:web:fa9433aca11712c1dced9f",
+            databaseURL: "https://loscalveralocos-default-rtdb.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const player = document.getElementById('m-audio');
+        let isAuthenticated = false;
+
+        function startApp() {
+            document.getElementById('enter-screen').style.opacity = '0';
+            setTimeout(() => { 
+                document.getElementById('enter-screen').style.visibility = 'hidden'; 
+                player.play().catch(e=>console.log("Ses başlatılamadı"));
+            }, 800);
+        }
+
+        function switchPage(p, btn) {
+            document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('page-' + p).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+        }
+
+        function toggleAdminPanel() {
+            if(isAuthenticated) document.getElementById('admin-panel').classList.toggle('open');
+            else document.getElementById('login-modal').style.display = 'flex';
+        }
+
+        function tryLogin() {
+            const u = document.getElementById('adm-user').value;
+            const p = document.getElementById('adm-pass').value;
+            if(u === "ayibogan" && p === "yozgat66") {
+                isAuthenticated = true;
+                document.getElementById('login-modal').style.display = 'none';
+                toggleAdminPanel();
+                fillSettings();
+            } else { alert("Hatalı Bilgi!"); }
+        }
+
+        // --- VERİ İŞLEME VE DİNLEME ---
+        db.ref('siteData').on('value', snap => {
+            const d = snap.val() || {};
+            renderGeneral(d);
+            
+            // Standart İçerikler
+            renderCollection(d.activities, 'ui-all-activities', 'adm-list-act', 'activities');
+            renderCollection(d.announcements, 'ui-all-announcements', 'adm-list-ann', 'announcements');
+            renderCollection(d.discord, 'ui-all-discord', 'adm-list-disc', 'discord');
+            
+            // Ticaret, Üyeler ve Onur Köşesi
+            renderCollection(d.trade, 'ui-trade-list', 'adm-list-trade', 'trade');
+            renderMembers(d.members);
+            renderHonor(d.honor); // Yeni Onur Köşesi Fonksiyonu
+        });
+
+        function renderGeneral(d) {
+            if(d.bg) document.getElementById('dynamic-bg').style.backgroundImage = `url('${d.bg}')`;
+            if(d.logo) { document.getElementById('ui-sidebar-logo').src = d.logo; document.getElementById('favicon').href = d.logo; }
+            document.getElementById('ui-main-img').src = d.mainCardImg || d.logo;
+            document.getElementById('ui-main-name').innerText = d.mainName || "Calvera";
+            document.getElementById('ui-main-bio').innerText = d.mainBio || "";
+            document.getElementById('ui-player-art').src = d.muArt || d.logo;
+            document.getElementById('ui-player-name').innerText = d.muName || "Müzik Çalıyor";
+            if(player.src !== d.muUrl && d.muUrl) player.src = d.muUrl;
+            document.getElementById('ui-story-text').innerHTML = d.story || "Henüz hikaye eklenmemiş.";
+        }
+
+        function renderCollection(data, uiId, admId, path) {
+            const ui = document.getElementById(uiId);
+            const adm = document.getElementById(admId);
+            ui.innerHTML = ""; 
+            adm.innerHTML = `<div style='color:var(--accent); font-size:0.6rem; margin-bottom:5px; font-weight:bold;'>${path.toUpperCase()} LİSTESİ</div>`;
+            
+            if(!data) return;
+            const arr = Object.keys(data).map(k => ({id:k, ...data[k]})).reverse();
+
+            if(path === 'activities' && arr[0]) {
+                document.getElementById('ui-last-act-img').src = arr[0].img;
+                document.getElementById('ui-last-act-title').innerText = arr[0].title;
+                document.getElementById('ui-last-act-desc').innerText = arr[0].desc;
+            }
+
+            arr.forEach(item => {
+                if(path === 'trade') {
+                    ui.innerHTML += `
+                        <div class="trade-card-item">
+                            <img src="${item.img}" class="trade-img" onclick="openLightbox('${item.title}', '${item.price}', '${item.img}')">
+                            <div class="trade-body">
+                                <h4 style="color:#fff; font-size:1rem;">${item.title || 'Ürün'}</h4>
+                                <p style="font-size:0.7rem; color:#888; margin-top:5px; margin-bottom:10px;">${item.desc || ''}</p>
+                                <div class="trade-price">${item.price || ''}</div>
+                            </div>
+                        </div>`;
+                } else {
+                    ui.innerHTML += `
+                        <div class="act-card-item" onclick="openLightbox('${item.title || ''}', '${item.desc || ''}', '${item.img || ''}')">
+                            ${item.img ? `<img src="${item.img}">` : `<div style="height:100px; background:#111;"></div>`}
+                            <div class="act-info">
+                                <h4 style="color:#fff; font-size:0.9rem;">${item.title || ''}</h4>
+                                <p style="font-size:0.7rem; color:#aaa;">${item.desc ? item.desc.substring(0,20)+'...' : ''}</p>
+                            </div>
+                        </div>`;
+                }
+
+                adm.innerHTML += `<div class="act-list-item">
+                    <span>${item.title || 'İsimsiz'}</span> 
+                    <button class="del-btn" onclick="deleteEntry('${path}','${item.id}')">SİL</button>
+                </div>`;
+            });
+        }
+
+        // --- ÜYE YÖNETİMİ ---
+        function renderMembers(data) {
+            const ui = document.getElementById('ui-members');
+            const adm = document.getElementById('adm-list-members');
+            ui.innerHTML = ""; adm.innerHTML = "";
+            if(!data) return;
+            const arr = Object.keys(data).map(k => ({id:k, ...data[k]}));
+
+            arr.forEach(m => {
+                ui.innerHTML += `<div class="member-badge">${m.name} <span class="member-rank">${m.rank}</span></div>`;
+                adm.innerHTML += `<div class="act-list-item"><span>${m.name} (${m.rank})</span><button class="del-btn" onclick="deleteEntry('members','${m.id}')">SİL</button></div>`;
+            });
+        }
+        function handleAddMember() {
+            const name = document.getElementById('mem-name').value;
+            const rank = document.getElementById('mem-rank').value;
+            if(!name) return alert("İsim gerekli");
+            db.ref('siteData/members').push({ name, rank }).then(() => {
+                document.getElementById('mem-name').value = "";
+                document.getElementById('mem-rank').value = "";
+            });
+        }
+
+        // --- ONUR KÖŞESİ YÖNETİMİ (YENİ) ---
+        function renderHonor(data) {
+            const ui = document.getElementById('ui-ck-list');
+            const adm = document.getElementById('adm-list-honor');
+            ui.innerHTML = ""; adm.innerHTML = "";
+            if(!data) return;
+            const arr = Object.keys(data).map(k => ({id:k, ...data[k]}));
+
+            arr.forEach(h => {
+                // Eğer status 'CK' ise kırmızı class, değilse gri class
+                const statusClass = (h.status && h.status.toUpperCase() === 'CK') ? 'status-ck' : 'status-other';
+                
+                // Ana Ekran Listesi
+                ui.innerHTML += `
+                    <tr>
+                        <td>${h.name}</td>
+                        <td style="text-align:right;">
+                            <span class="status-badge ${statusClass}">${h.status}</span>
+                        </td>
+                    </tr>`;
+                
+                // Admin Listesi
+                adm.innerHTML += `<div class="act-list-item"><span>${h.name} - ${h.status}</span><button class="del-btn" onclick="deleteEntry('honor','${h.id}')">SİL</button></div>`;
+            });
+        }
+
+        function handleAddHonor() {
+            const name = document.getElementById('honor-name').value;
+            const status = document.getElementById('honor-status').value;
+            if(!name || !status) return alert("İsim ve Durum giriniz!");
+            
+            db.ref('siteData/honor').push({ name, status }).then(() => {
+                document.getElementById('honor-name').value = "";
+                document.getElementById('honor-status').value = "";
+            });
+        }
+
+        // --- İÇERİK EKLEME ---
+        function checkTradeType(el) {
+            const priceInput = document.getElementById('new-price');
+            if(el.value === 'trade') priceInput.style.display = 'block';
+            else priceInput.style.display = 'none';
+        }
+
+        function handleNewEntry() {
+            const type = document.getElementById('add-type').value;
+            const title = document.getElementById('new-title').value;
+            const img = document.getElementById('new-img').value;
+            const desc = document.getElementById('new-desc').value;
+            const price = document.getElementById('new-price').value;
+            
+            const dataObj = { title, img, desc, time: Date.now() };
+            if(type === 'trade') dataObj.price = price;
+
+            db.ref(`siteData/${type}`).push(dataObj).then(() => {
+                alert("Başarıyla Eklendi!");
+                document.getElementById('new-title').value = "";
+                document.getElementById('new-img').value = "";
+                document.getElementById('new-desc').value = "";
+                document.getElementById('new-price').value = "";
+            });
+        }
+
+        function deleteEntry(path, id) { if(confirm("Silinsin mi?")) db.ref(`siteData/${path}/${id}`).remove(); }
+
+        function uploadSettings() {
+            db.ref('siteData').update({
+                logo: document.getElementById('in-logo').value,
+                bg: document.getElementById('in-bg').value,
+                mainCardImg: document.getElementById('in-main-img').value,
+                mainName: document.getElementById('in-name').value,
+                mainBio: document.getElementById('in-bio').value,
+                muUrl: document.getElementById('in-mu').value,
+                muArt: document.getElementById('in-mu-art').value,
+                story: document.getElementById('in-story').value
+            }).then(() => alert("Güncellendi!"));
+        }
+
+        function fillSettings() {
+            db.ref('siteData').once('value').then(s => {
+                const d = s.val() || {};
+                document.getElementById('in-logo').value = d.logo || "";
+                document.getElementById('in-bg').value = d.bg || "";
+                document.getElementById('in-main-img').value = d.mainCardImg || "";
+                document.getElementById('in-name').value = d.mainName || "";
+                document.getElementById('in-bio').value = d.mainBio || "";
+                document.getElementById('in-mu').value = d.muUrl || "";
+                document.getElementById('in-mu-art').value = d.muArt || "";
+                document.getElementById('in-story').value = d.story || "";
+            });
+        }
+
+        function openLightbox(t, d, i) {
+            if(!t && !d && !i) return;
+            document.getElementById('lb-title').innerText = t;
+            document.getElementById('lb-desc').innerText = d;
+            document.getElementById('lb-img').src = i;
+            document.getElementById('lb-img').style.display = i ? 'block' : 'none';
+            document.getElementById('lightbox').style.display = 'flex';
+        }
+        function closeLightbox() { document.getElementById('lightbox').style.display = 'none'; }
+        function toggleAudio() {
+            const icon = document.getElementById('play-icon');
+            if(player.paused) { player.play(); icon.className = "fas fa-pause"; }
+            else { player.pause(); icon.className = "fas fa-play"; }
+        }
+    </script>
+</body>
+</html>
